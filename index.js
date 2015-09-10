@@ -93,6 +93,7 @@ function session(options){
   var resaveSession = options.resave;
   var saveUninitializedSession = options.saveUninitialized;
   var secret = options.secret;
+  var shouldLock = options.lockFilter || defaultLockFunc;
 
   var generateId = options.genid || generateSessionId;
 
@@ -171,6 +172,7 @@ function session(options){
     var originalHash;
     var originalId;
     var savedHash;
+    var reqShouldBeLocked = shouldLock(req);
 
     // expose store
     req.sessionStore = store;
@@ -199,6 +201,7 @@ function session(options){
 
       setcookie(res, name, req.sessionID, secrets[0], cookie.data);
     });
+
 
     // proxy end() to commit the session
     var _end = res.end;
@@ -257,7 +260,7 @@ function session(options){
         return ret;
       }
 
-      if (shouldDestroy(req)) {
+      if (shouldDestroy(req) && reqShouldBeLocked) {
         // destroy session
         debug('destroying');
         store.destroy(req.sessionID, function ondestroy(err) {
@@ -281,7 +284,7 @@ function session(options){
       // touch session
       req.session.touch();
 
-      if (shouldSave(req)) {
+      if (shouldSave(req) && reqShouldBeLocked) {
         req.session.save(function onsave(err) {
           if (err) {
             defer(next, err);
@@ -424,7 +427,7 @@ function session(options){
         originalHash = hash(sess);
 
         if (!resaveSession) {
-          savedHash = originalHash
+          savedHash = originalHash;
         }
 
         wrapmethods(req.session);
@@ -444,6 +447,10 @@ function session(options){
 
 function generateSessionId(sess) {
   return uid(24);
+}
+
+function defaultLockFunc(req) {
+  return true;
 }
 
 /**

@@ -2,7 +2,7 @@
  * express-session
  * Copyright(c) 2010 Sencha Inc.
  * Copyright(c) 2011 TJ Holowaychuk
- * Copyright(c) 2014-2015 Douglas Christopher Wilson
+ * Copyright(c) 2014 Douglas Christopher Wilson
  * MIT Licensed
  */
 
@@ -187,10 +187,10 @@ function session(options){
         return;
       }
 
-      var cookie = req.session.cookie;
+      var sessionCookie = new Cookie(cookie);
 
       // only send secure cookies via https
-      if (cookie.secure && !issecure(req, trustProxy)) {
+      if (sessionCookie.secure && !issecure(req, trustProxy)) {
         debug('not secured');
         return;
       }
@@ -199,7 +199,7 @@ function session(options){
         return;
       }
 
-      setcookie(res, name, req.sessionID, secrets[0], cookie.data);
+      setcookie(res, name, req.sessionID, secrets[0], sessionCookie.data);
     });
 
 
@@ -383,15 +383,9 @@ function session(options){
       if (typeof req.sessionID !== 'string') {
         return false;
       }
-
-      // in case of rolling session, always reset the cookie
-      if (rollingSessions) {
-        return true;
-      }
-
       return cookieId != req.sessionID
         ? saveUninitializedSession || isModified(req.session)
-        : req.session.cookie.expires != null && isModified(req.session);
+        : rollingSessions || req.session.cookie.expires != null && isModified(req.session);
     }
 
     // generate a session if the browser doesn't send a sessionID
